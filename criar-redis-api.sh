@@ -4,7 +4,7 @@
 # O token precisa ter permissão de escrita (write)
 
 API_URL="https://ambiente.bacco-erp.com/api/v1"
-TOKEN="1|cYs9PY4Aigsl9BRNLl05uKWnVUnEhJaTjnJ9InX3f5030d64"
+TOKEN="6|F8sy5tpiuKVZ11LK0dWMasyVSwwofqTLm1RlD2lz6c142e01"
 PROJECT_UUID="j0wwcocgocwwg0g884w8so0g"
 SERVER_UUID="t0owoogk488sg8s8kw0kgcsc"
 ENV_NAME="production"
@@ -21,7 +21,7 @@ RESPONSE=$(curl -s -X POST "$API_URL/databases/redis" \
     "environment_name": "'$ENV_NAME'",
     "name": "redis-amigo-secreto",
     "description": "Redis para filas de envio de mensagens",
-    "redis_password": "",
+    "redis_password": null,
     "instant_deploy": true
   }')
 
