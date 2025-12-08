@@ -1,0 +1,31 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copiar arquivos de dependências do backend
+COPY package*.json ./
+
+# Instalar dependências do backend
+RUN npm install
+
+# Copiar código do backend
+COPY server ./server
+
+# Instalar dependências do cliente
+WORKDIR /app/client
+COPY client/package*.json ./
+RUN npm install
+COPY client ./
+
+# Voltar para o diretório raiz
+WORKDIR /app
+
+# Criar diretório para dados
+RUN mkdir -p /app/data
+
+# Expor portas
+EXPOSE 5000 3000
+
+# Comando para iniciar em modo desenvolvimento
+CMD ["npm", "run", "dev"]
+

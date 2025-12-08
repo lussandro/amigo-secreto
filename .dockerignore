@@ -1,0 +1,12 @@
+node_modules
+client/node_modules
+.env
+.git
+.gitignore
+*.log
+.DS_Store
+data/
+database.sqlite
+client/build
+.vscode
+.idea

@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5000:5000"
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=5000
+      - EVOLUTION_BASE_URL=${EVOLUTION_BASE_URL:-http://localhost:8080}
+      - EVOLUTION_INSTANCE=${EVOLUTION_INSTANCE:-default}
+      - EVOLUTION_TOKEN=${EVOLUTION_TOKEN}
+      - APP_BASE_URL=${APP_BASE_URL:-http://localhost:5000}
+      - DB_PATH=/app/data/database.sqlite
+    volumes:
+      - ./server:/app/server
+      - ./client:/app/client
+      - ./data:/app/data
+      - /app/node_modules
+      - /app/client/node_modules
+    restart: unless-stopped
+
