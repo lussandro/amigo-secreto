@@ -178,15 +178,27 @@ async function reenviarLinkIndividual(req, res) {
     }
     
     // Enviar mensagem com link e linkPreview
-    const mensagem = `Olá ${sorteio.nome}! 🎁
+    const mensagem = `🎁 *Amigo Secreto - ${grupo.nome_do_grupo}* 🎁
 
-Você tirou no amigo secreto!
+Olá ${sorteio.nome}!
 
-Clique no link abaixo para descobrir quem é:
+O sorteio do amigo secreto foi realizado e você já pode descobrir quem tirou você! 🎉
 
+*Como funciona:*
+1️⃣ Clique no link abaixo
+2️⃣ Descubra quem é seu amigo secreto
+3️⃣ Comece a preparar o presente! 🎁
+
+🔗 *Link para revelação:*
 ${sorteio.link_visualizacao}
 
-⚠️ Atenção: Este link só pode ser visualizado uma vez!`;
+⚠️ *IMPORTANTE:*
+• Este link é único e pessoal
+• Só pode ser visualizado UMA vez
+• Guarde bem o nome do seu amigo secreto!
+• Não compartilhe este link com ninguém
+
+Boa sorte e divirta-se! 🎄✨`;
     
     const resultado = await enviarMensagem(sorteio.telefone, mensagem, true);
     
@@ -214,9 +226,71 @@ ${sorteio.link_visualizacao}
   }
 }
 
+async function enviarMensagemTesteIndividual(req, res) {
+  try {
+    const { grupo_id, participante_id } = req.params;
+    
+    // Verificar se o grupo existe
+    const grupo = await db.get('SELECT * FROM grupos WHERE id = ?', [grupo_id]);
+    if (!grupo) {
+      return res.status(404).json({ error: 'Grupo não encontrado' });
+    }
+    
+    // Buscar participante
+    const participante = await db.get(
+      'SELECT * FROM participantes WHERE id = ? AND grupo_id = ?',
+      [participante_id, grupo_id]
+    );
+    
+    if (!participante) {
+      return res.status(404).json({ error: 'Participante não encontrado' });
+    }
+    
+    // Criar um link de teste único
+    const tokenTeste = generateToken();
+    const linkTeste = `${APP_BASE_URL}/reveal/${tokenTeste}`;
+    
+    const mensagem = `Olá ${participante.nome}! 🧪
+
+Esta é uma mensagem de TESTE do sistema de Amigo Secreto.
+
+Se você recebeu esta mensagem, a integração com a Evolution API está funcionando perfeitamente! ✅
+
+Clique no link abaixo para testar:
+${linkTeste}
+
+Parabéns!! Teste ok? 🎉`;
+    
+    const resultado = await enviarMensagem(participante.telefone, mensagem, true);
+    
+    // Registrar envio
+    await db.run(
+      `INSERT INTO envios (grupo_id, participante_id, status, resposta_raw)
+       VALUES (?, ?, ?, ?)`,
+      [
+        grupo_id,
+        participante_id,
+        resultado.success ? 'enviado' : 'erro',
+        JSON.stringify(resultado)
+      ]
+    );
+    
+    res.json({
+      success: resultado.success,
+      message: resultado.success ? 'Mensagem de teste enviada com sucesso' : 'Erro ao enviar mensagem de teste',
+      participante: participante.nome,
+      erro: resultado.error || null
+    });
+  } catch (error) {
+    console.error('Erro ao enviar mensagem de teste individual:', error);
+    res.status(500).json({ error: 'Erro ao enviar mensagem de teste' });
+  }
+}
+
 module.exports = {
   enviarLinks,
   enviarMensagemTeste,
+  enviarMensagemTesteIndividual,
   reenviarLinkIndividual,
   listarEnvios
 };

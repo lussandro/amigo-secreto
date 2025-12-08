@@ -329,26 +329,54 @@ function GrupoDetail({ grupo, onBack, apiBaseUrl }) {
                   <strong>{p.nome}</strong>
                   <div style={{ color: '#6b7280', fontSize: '0.875rem' }}>{p.telefone}</div>
                 </div>
-                {grupo.status === 'rascunho' && (
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button
-                      className="btn"
-                      onClick={() => handleEditParticipante(p)}
-                      style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', backgroundColor: '#3b82f6', color: 'white' }}
-                      title="Editar participante"
-                    >
-                      ✏️ Editar
-                    </button>
-                    <button
-                      className="btn btn-danger"
-                      onClick={() => handleDeleteParticipante(p.id)}
-                      style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
-                      title="Remover participante"
-                    >
-                      🗑️ Remover
-                    </button>
-                  </div>
-                )}
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {grupo.status === 'rascunho' && (
+                    <>
+                      <button
+                        className="btn"
+                        onClick={() => handleEditParticipante(p)}
+                        style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', backgroundColor: '#3b82f6', color: 'white' }}
+                        title="Editar participante"
+                      >
+                        ✏️ Editar
+                      </button>
+                      <button
+                        className="btn btn-danger"
+                        onClick={() => handleDeleteParticipante(p.id)}
+                        style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+                        title="Remover participante"
+                      >
+                        🗑️ Remover
+                      </button>
+                    </>
+                  )}
+                  <button
+                    className="btn"
+                    onClick={async () => {
+                      if (!window.confirm(`Enviar mensagem de teste para ${p.nome}?`)) return;
+                      
+                      try {
+                        const response = await fetch(`${apiBaseUrl}/grupos/${grupo.id}/teste-envio/${p.id}`, {
+                          method: 'POST'
+                        });
+                        
+                        if (response.ok) {
+                          const data = await response.json();
+                          setToast({ message: data.message || `Mensagem de teste enviada para ${p.nome}!`, type: 'success' });
+                        } else {
+                          const error = await response.json();
+                          setToast({ message: error.error || 'Erro ao enviar mensagem de teste', type: 'error' });
+                        }
+                      } catch (error) {
+                        setToast({ message: 'Erro ao enviar mensagem de teste', type: 'error' });
+                      }
+                    }}
+                    style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', backgroundColor: '#f59e0b', color: 'white' }}
+                    title="Enviar mensagem de teste individual"
+                  >
+                    🧪 Teste
+                  </button>
+                </div>
               </div>
             ))
           )}

@@ -26,6 +26,7 @@ router.get('/grupos/:grupo_id/sorteio', sorteioController.obterResultadoSorteio)
 const envioController = require('../controllers/envioController');
 router.post('/grupos/:grupo_id/enviar', envioController.enviarLinks);
 router.post('/grupos/:grupo_id/teste-envio', envioController.enviarMensagemTeste);
+router.post('/grupos/:grupo_id/teste-envio/:participante_id', envioController.enviarMensagemTesteIndividual);
 router.post('/grupos/:grupo_id/reenviar/:participante_id', envioController.reenviarLinkIndividual);
 router.get('/grupos/:grupo_id/envios', envioController.listarEnvios);
 
