@@ -30,20 +30,42 @@ async function enviarLinks(req, res) {
     
     const resultados = [];
     
-    for (const sorteio of sorteios) {
+    for (let i = 0; i < sorteios.length; i++) {
+      const sorteio = sorteios[i];
+      
+      // Enviar presence antes de cada mensagem para simular comportamento humano
+      console.log(`[${i + 1}/${sorteios.length}] Enviando presence para ${sorteio.nome}...`);
+      await enviarPresence(sorteio.telefone);
+      
+      // Aguardar um pouco após o presence (simula tempo de digitação)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
       // Enviar mensagem única com link e linkPreview habilitado
       // O linkPreview faz o WhatsApp mostrar um preview do link, tornando-o mais clicável
       // Baseado na documentação: https://doc.evolution-api.com/v2/api-reference/message-controller/send-text
-      const mensagem = `Olá ${sorteio.nome}! 🎁
+      const mensagem = `🎁 *Amigo Secreto - ${grupo.nome_do_grupo}* 🎁
 
-Você tirou no amigo secreto!
+Olá ${sorteio.nome}!
 
-Clique no link abaixo para descobrir quem é:
+O sorteio do amigo secreto foi realizado e você já pode descobrir quem tirou você! 🎉
 
+*Como funciona:*
+1️⃣ Clique no link abaixo
+2️⃣ Descubra quem é seu amigo secreto
+3️⃣ Comece a preparar o presente! 🎁
+
+🔗 *Link para revelação:*
 ${sorteio.link_visualizacao}
 
-⚠️ Atenção: Este link só pode ser visualizado uma vez!`;
+⚠️ *IMPORTANTE:*
+• Este link é único e pessoal
+• Só pode ser visualizado UMA vez
+• Guarde bem o nome do seu amigo secreto!
+• Não compartilhe este link com ninguém
+
+Boa sorte e divirta-se! 🎄✨`;
       
+      console.log(`[${i + 1}/${sorteios.length}] Enviando mensagem para ${sorteio.nome}...`);
       // Enviar com linkPreview habilitado para mostrar preview do link
       const resultado = await enviarMensagem(sorteio.telefone, mensagem, true);
       
@@ -65,6 +87,13 @@ ${sorteio.link_visualizacao}
         status: resultado.success ? 'enviado' : 'erro',
         erro: resultado.error || null
       });
+      
+      // Delay aleatório entre mensagens (exceto na última)
+      if (i < sorteios.length - 1) {
+        const delay = delayAleatorio(10, 45);
+        console.log(`[${i + 1}/${sorteios.length}] Aguardando ${delay / 1000}s antes do próximo envio...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
     
     // Atualizar status do grupo
