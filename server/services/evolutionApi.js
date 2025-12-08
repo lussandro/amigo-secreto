@@ -14,6 +14,15 @@ const EVOLUTION_TOKEN = process.env.EVOLUTION_TOKEN;
  */
 async function enviarPresence(numero) {
   try {
+    // Verificar se as variáveis de ambiente estão configuradas
+    if (!EVOLUTION_BASE_URL || !EVOLUTION_INSTANCE || !EVOLUTION_TOKEN) {
+      // Não falhar se as variáveis não estiverem configuradas, apenas retornar sucesso falso
+      return {
+        success: false,
+        error: 'Variáveis de ambiente não configuradas'
+      };
+    }
+    
     const url = `${EVOLUTION_BASE_URL}/chat/sendPresence/${EVOLUTION_INSTANCE}`;
     const payload = {
       number: numero,
@@ -35,7 +44,7 @@ async function enviarPresence(numero) {
     };
   } catch (error) {
     // Não falhar se o presence der erro, apenas logar
-    console.warn('Aviso ao enviar presence:', error.response?.data || error.message);
+    console.warn('[EVOLUTION API] Aviso ao enviar presence:', error.response?.data || error.message);
     return {
       success: false,
       error: error.response?.data || error.message
@@ -122,6 +131,23 @@ async function testarFormatoAPI(numero, mensagem) {
  */
 async function enviarMensagem(numero, mensagem, linkPreview = false) {
   try {
+    // Verificar se as variáveis de ambiente estão configuradas
+    if (!EVOLUTION_BASE_URL || !EVOLUTION_INSTANCE || !EVOLUTION_TOKEN) {
+      const missing = [];
+      if (!EVOLUTION_BASE_URL) missing.push('EVOLUTION_BASE_URL');
+      if (!EVOLUTION_INSTANCE) missing.push('EVOLUTION_INSTANCE');
+      if (!EVOLUTION_TOKEN) missing.push('EVOLUTION_TOKEN');
+      
+      console.error(`[EVOLUTION API] Variáveis de ambiente faltando: ${missing.join(', ')}`);
+      return {
+        success: false,
+        error: {
+          message: `Variáveis de ambiente não configuradas: ${missing.join(', ')}`,
+          missing: missing
+        }
+      };
+    }
+    
     // Formato correto conforme documentação oficial
     // https://doc.evolution-api.com/v2/api-reference/message-controller/send-text
     const url = `${EVOLUTION_BASE_URL}/message/sendText/${EVOLUTION_INSTANCE}`;
@@ -135,6 +161,7 @@ async function enviarMensagem(numero, mensagem, linkPreview = false) {
       'apikey': EVOLUTION_TOKEN
     };
 
+    console.log(`[EVOLUTION API] Enviando mensagem para ${numero} via ${url}`);
     const response = await axios.post(url, payload, { headers });
 
     return {
@@ -151,7 +178,7 @@ async function enviarMensagem(numero, mensagem, linkPreview = false) {
       method: error.config?.method
     };
     
-    console.error('Erro ao enviar mensagem via Evolution API:', JSON.stringify(errorDetails, null, 2));
+    console.error('[EVOLUTION API] Erro ao enviar mensagem:', JSON.stringify(errorDetails, null, 2));
     
     return {
       success: false,
