@@ -262,7 +262,7 @@ async function enviarMensagemTesteIndividual(req, res) {
         telefone: participante.telefone,
         mensagem: `Olá ${participante.nome}! 🧪
 
-Esta é uma mensagem de TESTE INDIVIDUAL do sistema de Amigo Secreto.
+Esta é uma mensagem de TESTE do sistema de Amigo Secreto.
 
 Se você recebeu esta mensagem, a integração com a Evolution API está funcionando perfeitamente! ✅
 
