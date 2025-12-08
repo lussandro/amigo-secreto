@@ -2,7 +2,20 @@ const Queue = require('bull');
 require('dotenv').config();
 
 // Configuração do Redis
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+// Suporta tanto REDIS_URL quanto variáveis separadas (REDIS_HOST, REDIS_PORT, REDIS_PASSWORD)
+let REDIS_URL = process.env.REDIS_URL;
+
+if (!REDIS_URL) {
+  const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
+  const REDIS_PORT = process.env.REDIS_PORT || 6379;
+  const REDIS_PASSWORD = process.env.REDIS_PASSWORD || '';
+  
+  if (REDIS_PASSWORD) {
+    REDIS_URL = `redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}`;
+  } else {
+    REDIS_URL = `redis://${REDIS_HOST}:${REDIS_PORT}`;
+  }
+}
 
 // Criar filas
 const envioQueue = new Queue('envio-mensagens', REDIS_URL, {
