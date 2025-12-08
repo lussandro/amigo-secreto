@@ -5,6 +5,7 @@
 
 API_URL="https://ambiente.bacco-erp.com/api/v1"
 TOKEN="6|F8sy5tpiuKVZ11LK0dWMasyVSwwofqTLm1RlD2lz6c142e01"
+# Token com permissão de escrita
 PROJECT_UUID="j0wwcocgocwwg0g884w8so0g"
 SERVER_UUID="t0owoogk488sg8s8kw0kgcsc"
 ENV_NAME="production"
