@@ -1,5 +1,5 @@
 const db = require('../database');
-const { enviarMensagem, enviarPresence, delayAleatorio } = require('../services/evolutionApi');
+const { envioQueue } = require('../services/queue');
 const { generateToken } = require('../utils/crypto');
 require('dotenv').config();
 
@@ -28,84 +28,33 @@ async function enviarLinks(req, res) {
       [grupo_id]
     );
     
-    const resultados = [];
-    
-    for (let i = 0; i < sorteios.length; i++) {
-      const sorteio = sorteios[i];
-      
-      // Enviar presence antes de cada mensagem para simular comportamento humano
-      console.log(`[${i + 1}/${sorteios.length}] Enviando presence para ${sorteio.nome}...`);
-      await enviarPresence(sorteio.telefone);
-      
-      // Aguardar um pouco após o presence (simula tempo de digitação)
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Enviar mensagem única com link e linkPreview habilitado
-      // O linkPreview faz o WhatsApp mostrar um preview do link, tornando-o mais clicável
-      // Baseado na documentação: https://doc.evolution-api.com/v2/api-reference/message-controller/send-text
-      const mensagem = `🎁 *Amigo Secreto - ${grupo.nome_do_grupo}* 🎁
-
-Olá ${sorteio.nome}!
-
-O sorteio do amigo secreto foi realizado e você já pode descobrir quem tirou você! 🎉
-
-*Como funciona:*
-1️⃣ Clique no link abaixo
-2️⃣ Descubra quem é seu amigo secreto
-3️⃣ Comece a preparar o presente! 🎁
-
-🔗 *Link para revelação:*
-${sorteio.link_visualizacao}
-
-⚠️ *IMPORTANTE:*
-• Este link é único e pessoal
-• Só pode ser visualizado UMA vez
-• Guarde bem o nome do seu amigo secreto!
-• Não compartilhe este link com ninguém
-
-Boa sorte e divirta-se! 🎄✨`;
-      
-      console.log(`[${i + 1}/${sorteios.length}] Enviando mensagem para ${sorteio.nome}...`);
-      // Enviar com linkPreview habilitado para mostrar preview do link
-      const resultado = await enviarMensagem(sorteio.telefone, mensagem, true);
-      
-      // Registrar envio
-      await db.run(
-        `INSERT INTO envios (grupo_id, participante_id, status, resposta_raw)
-         VALUES (?, ?, ?, ?)`,
-        [
-          grupo_id,
-          sorteio.participante_id,
-          resultado.success ? 'enviado' : 'erro',
-          JSON.stringify(resultado)
-        ]
-      );
-      
-      resultados.push({
-        participante: sorteio.nome,
-        telefone: sorteio.telefone,
-        status: resultado.success ? 'enviado' : 'erro',
-        erro: resultado.error || null
-      });
-      
-      // Delay aleatório entre mensagens (exceto na última)
-      if (i < sorteios.length - 1) {
-        const delay = delayAleatorio(10, 45);
-        console.log(`[${i + 1}/${sorteios.length}] Aguardando ${delay / 1000}s antes do próximo envio...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
+    if (sorteios.length === 0) {
+      return res.status(400).json({ error: 'Não há sorteios para enviar' });
     }
     
-    // Atualizar status do grupo
-    await db.run('UPDATE grupos SET status = ? WHERE id = ?', ['links_enviados', grupo_id]);
+    // Adicionar job na fila para processar o lote
+    const job = await envioQueue.add('enviar-lote', {
+      grupo_id,
+      grupo_nome: grupo.nome_do_grupo,
+      sorteios: sorteios.map(s => ({
+        participante_id: s.participante_id,
+        nome: s.nome,
+        telefone: s.telefone,
+        link_visualizacao: s.link_visualizacao
+      }))
+    }, {
+      jobId: `lote-${grupo_id}-${Date.now()}`
+    });
     
     res.json({
-      message: 'Processo de envio concluído',
-      resultados: resultados
+      message: 'Processo de envio iniciado',
+      job_id: job.id,
+      total_mensagens: sorteios.length,
+      status: 'agendado'
     });
   } catch (error) {
-    console.error('Erro ao enviar links:', error);
-    res.status(500).json({ error: 'Erro ao enviar links' });
+    console.error('Erro ao agendar envio de links:', error);
+    res.status(500).json({ error: 'Erro ao agendar envio de links' });
   }
 }
 
@@ -129,58 +78,28 @@ async function enviarMensagemTeste(req, res) {
       return res.status(400).json({ error: 'Não há participantes no grupo' });
     }
     
-    const resultados = [];
-    
-    for (let i = 0; i < participantes.length; i++) {
-      const participante = participantes[i];
-      
-      // Enviar presence antes de cada mensagem
-      console.log(`[${i + 1}/${participantes.length}] Enviando presence para ${participante.nome}...`);
-      await enviarPresence(participante.telefone);
-      
-      // Aguardar um pouco após o presence
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Criar um link de teste único para cada participante
-      const tokenTeste = generateToken();
-      const linkTeste = `${APP_BASE_URL}/reveal/${tokenTeste}`;
-      
-      const mensagem = `Olá ${participante.nome}! 🧪
-
-Esta é uma mensagem de TESTE do sistema de Amigo Secreto.
-
-Se você recebeu esta mensagem, a integração com a Evolution API está funcionando perfeitamente! ✅
-
-Clique no link abaixo para testar:
-${linkTeste}
-
-Parabéns!! Teste ok? 🎉`;
-      
-      console.log(`[${i + 1}/${participantes.length}] Enviando mensagem de teste para ${participante.nome}...`);
-      const resultado = await enviarMensagem(participante.telefone, mensagem, true);
-      
-      resultados.push({
-        participante: participante.nome,
-        telefone: participante.telefone,
-        status: resultado.success ? 'enviado' : 'erro',
-        erro: resultado.error || null
-      });
-      
-      // Delay aleatório entre mensagens (exceto na última)
-      if (i < participantes.length - 1) {
-        const delay = delayAleatorio(10, 45);
-        console.log(`[${i + 1}/${participantes.length}] Aguardando ${delay / 1000}s antes do próximo envio...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
+    // Adicionar job na fila para processar teste em lote
+    const job = await envioQueue.add('enviar-teste-lote', {
+      grupo_id,
+      participantes: participantes.map(p => ({
+        id: p.id,
+        nome: p.nome,
+        telefone: p.telefone
+      })),
+      app_base_url: APP_BASE_URL
+    }, {
+      jobId: `teste-lote-${grupo_id}-${Date.now()}`
+    });
     
     res.json({
-      message: 'Mensagens de teste enviadas',
-      resultados: resultados
+      message: 'Mensagens de teste agendadas',
+      job_id: job.id,
+      total_mensagens: participantes.length,
+      status: 'agendado'
     });
   } catch (error) {
-    console.error('Erro ao enviar mensagem de teste:', error);
-    res.status(500).json({ error: 'Erro ao enviar mensagem de teste' });
+    console.error('Erro ao agendar mensagens de teste:', error);
+    res.status(500).json({ error: 'Erro ao agendar mensagens de teste' });
   }
 }
 
@@ -201,6 +120,36 @@ async function listarEnvios(req, res) {
   } catch (error) {
     console.error('Erro ao listar envios:', error);
     res.status(500).json({ error: 'Erro ao listar envios' });
+  }
+}
+
+async function statusJob(req, res) {
+  try {
+    const { job_id } = req.params;
+    
+    const job = await envioQueue.getJob(job_id);
+    
+    if (!job) {
+      return res.status(404).json({ error: 'Job não encontrado' });
+    }
+    
+    const state = await job.getState();
+    const progress = job.progress();
+    const result = job.returnvalue;
+    
+    res.json({
+      job_id: job.id,
+      state,
+      progress,
+      data: job.data,
+      result,
+      failedReason: job.failedReason,
+      processedOn: job.processedOn,
+      finishedOn: job.finishedOn
+    });
+  } catch (error) {
+    console.error('Erro ao buscar status do job:', error);
+    res.status(500).json({ error: 'Erro ao buscar status do job' });
   }
 }
 
@@ -231,12 +180,19 @@ async function reenviarLinkIndividual(req, res) {
       return res.status(404).json({ error: 'Sorteio não encontrado para este participante' });
     }
     
-    // Enviar mensagem com link e linkPreview
-    const mensagem = `🎁 *Amigo Secreto - ${grupo.nome_do_grupo}* 🎁
+    // Adicionar job na fila para reenvio individual
+    const job = await envioQueue.add('enviar-mensagem', {
+      tipo: 'reenvio-link',
+      dados: {
+        grupo_id,
+        participante_id,
+        nome: sorteio.nome,
+        telefone: sorteio.telefone,
+        mensagem: `🎁 *Amigo Secreto - ${grupo.nome_do_grupo}* 🎁
 
 Olá ${sorteio.nome}!
 
-O sorteio do amigo secreto foi realizado e você já pode descobrir quem tirou você! 🎉
+Você solicitou o reenvio do seu link do amigo secreto. Aqui está ele novamente! 🎉
 
 *Como funciona:*
 1️⃣ Clique no link abaixo
@@ -249,34 +205,26 @@ ${sorteio.link_visualizacao}
 ⚠️ *IMPORTANTE:*
 • Este link é único e pessoal
 • Só pode ser visualizado UMA vez
+• Se você já o abriu, ele não funcionará novamente
 • Guarde bem o nome do seu amigo secreto!
-• Não compartilhe este link com ninguém
 
-Boa sorte e divirta-se! 🎄✨`;
-    
-    const resultado = await enviarMensagem(sorteio.telefone, mensagem, true);
-    
-    // Registrar envio
-    await db.run(
-      `INSERT INTO envios (grupo_id, participante_id, status, resposta_raw)
-       VALUES (?, ?, ?, ?)`,
-      [
-        grupo_id,
-        participante_id,
-        resultado.success ? 'enviado' : 'erro',
-        JSON.stringify(resultado)
-      ]
-    );
+Boa sorte e divirta-se! 🎄✨`,
+        linkPreview: true
+      }
+    }, {
+      jobId: `reenvio-${grupo_id}-${participante_id}-${Date.now()}`
+    });
     
     res.json({
-      success: resultado.success,
-      message: resultado.success ? 'Link reenviado com sucesso' : 'Erro ao reenviar link',
+      success: true,
+      message: 'Link agendado para reenvio',
+      job_id: job.id,
       participante: sorteio.nome,
-      erro: resultado.error || null
+      status: 'agendado'
     });
   } catch (error) {
-    console.error('Erro ao reenviar link:', error);
-    res.status(500).json({ error: 'Erro ao reenviar link' });
+    console.error('Erro ao agendar reenvio de link:', error);
+    res.status(500).json({ error: 'Erro ao agendar reenvio de link' });
   }
 }
 
@@ -284,12 +232,9 @@ async function enviarMensagemTesteIndividual(req, res) {
   try {
     const { grupo_id, participante_id } = req.params;
     
-    console.log(`[TESTE INDIVIDUAL] Iniciando teste para grupo ${grupo_id}, participante ${participante_id}`);
-    
     // Verificar se o grupo existe
     const grupo = await db.get('SELECT * FROM grupos WHERE id = ?', [grupo_id]);
     if (!grupo) {
-      console.log(`[TESTE INDIVIDUAL] Grupo ${grupo_id} não encontrado`);
       return res.status(404).json({ error: 'Grupo não encontrado' });
     }
     
@@ -300,25 +245,22 @@ async function enviarMensagemTesteIndividual(req, res) {
     );
     
     if (!participante) {
-      console.log(`[TESTE INDIVIDUAL] Participante ${participante_id} não encontrado no grupo ${grupo_id}`);
       return res.status(404).json({ error: 'Participante não encontrado' });
     }
-    
-    console.log(`[TESTE INDIVIDUAL] Participante encontrado: ${participante.nome} (${participante.telefone})`);
-    
-    // Enviar presence antes da mensagem
-    console.log(`[TESTE INDIVIDUAL] Enviando presence para ${participante.nome}...`);
-    const presenceResult = await enviarPresence(participante.telefone);
-    console.log(`[TESTE INDIVIDUAL] Presence enviado:`, presenceResult.success ? 'OK' : 'FALHOU');
-    
-    // Aguardar um pouco após o presence
-    await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Criar um link de teste único
     const tokenTeste = generateToken();
     const linkTeste = `${APP_BASE_URL}/reveal/${tokenTeste}`;
     
-    const mensagem = `Olá ${participante.nome}! 🧪
+    // Adicionar job na fila para teste individual
+    const job = await envioQueue.add('enviar-mensagem', {
+      tipo: 'teste-individual',
+      dados: {
+        grupo_id,
+        participante_id,
+        nome: participante.nome,
+        telefone: participante.telefone,
+        mensagem: `Olá ${participante.nome}! 🧪
 
 Esta é uma mensagem de TESTE INDIVIDUAL do sistema de Amigo Secreto.
 
@@ -327,36 +269,23 @@ Se você recebeu esta mensagem, a integração com a Evolution API está funcion
 Clique no link abaixo para testar:
 ${linkTeste}
 
-Parabéns!! Teste ok? 🎉`;
-    
-    console.log(`[TESTE INDIVIDUAL] Enviando mensagem de teste para ${participante.nome}...`);
-    const resultado = await enviarMensagem(participante.telefone, mensagem, true);
-    
-    console.log(`[TESTE INDIVIDUAL] Resultado do envio:`, resultado.success ? 'SUCESSO' : 'ERRO', resultado.error || '');
-    
-    // Registrar envio
-    await db.run(
-      `INSERT INTO envios (grupo_id, participante_id, status, resposta_raw)
-       VALUES (?, ?, ?, ?)`,
-      [
-        grupo_id,
-        participante_id,
-        resultado.success ? 'enviado' : 'erro',
-        JSON.stringify(resultado)
-      ]
-    );
-    
-    console.log(`[TESTE INDIVIDUAL] Envio registrado no banco de dados`);
+Parabéns!! Teste ok? 🎉`,
+        linkPreview: true
+      }
+    }, {
+      jobId: `teste-individual-${grupo_id}-${participante_id}-${Date.now()}`
+    });
     
     res.json({
-      success: resultado.success,
-      message: resultado.success ? 'Mensagem de teste enviada com sucesso' : 'Erro ao enviar mensagem de teste',
+      success: true,
+      message: 'Mensagem de teste agendada',
+      job_id: job.id,
       participante: participante.nome,
-      erro: resultado.error || null
+      status: 'agendado'
     });
   } catch (error) {
-    console.error('[TESTE INDIVIDUAL] Erro ao enviar mensagem de teste individual:', error);
-    res.status(500).json({ error: 'Erro ao enviar mensagem de teste', details: error.message });
+    console.error('Erro ao agendar mensagem de teste individual:', error);
+    res.status(500).json({ error: 'Erro ao agendar mensagem de teste', details: error.message });
   }
 }
 
@@ -365,6 +294,7 @@ module.exports = {
   enviarMensagemTeste,
   enviarMensagemTesteIndividual,
   reenviarLinkIndividual,
-  listarEnvios
+  listarEnvios,
+  statusJob
 };
 

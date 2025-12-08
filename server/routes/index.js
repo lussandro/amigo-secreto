@@ -29,6 +29,7 @@ router.post('/grupos/:grupo_id/teste-envio', envioController.enviarMensagemTeste
 router.post('/grupos/:grupo_id/teste-envio/:participante_id', envioController.enviarMensagemTesteIndividual);
 router.post('/grupos/:grupo_id/reenviar/:participante_id', envioController.reenviarLinkIndividual);
 router.get('/grupos/:grupo_id/envios', envioController.listarEnvios);
+router.get('/jobs/:job_id/status', envioController.statusJob);
 
 // Reveal (público)
 const revealController = require('../controllers/revealController');

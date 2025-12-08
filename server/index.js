@@ -5,6 +5,8 @@ require('dotenv').config();
 
 const db = require('./database');
 const routes = require('./routes');
+// Iniciar workers de envio
+require('./workers/envioWorker');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
