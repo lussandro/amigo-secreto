@@ -137,13 +137,19 @@ async function testarFormatoAPI(numero, mensagem) {
 async function enviarMensagem(numero, mensagem, linkPreview = false) {
   try {
     // Verificar se as variáveis de ambiente estão configuradas
-    if (!EVOLUTION_BASE_URL || !EVOLUTION_INSTANCE || !EVOLUTION_TOKEN) {
+    // Recarregar do process.env para garantir que está atualizado
+    const EVOLUTION_BASE_URL_CURRENT = process.env.EVOLUTION_BASE_URL;
+    const EVOLUTION_INSTANCE_CURRENT = process.env.EVOLUTION_INSTANCE;
+    const EVOLUTION_TOKEN_CURRENT = process.env.EVOLUTION_TOKEN;
+    
+    if (!EVOLUTION_BASE_URL_CURRENT || !EVOLUTION_INSTANCE_CURRENT || !EVOLUTION_TOKEN_CURRENT) {
       const missing = [];
-      if (!EVOLUTION_BASE_URL) missing.push('EVOLUTION_BASE_URL');
-      if (!EVOLUTION_INSTANCE) missing.push('EVOLUTION_INSTANCE');
-      if (!EVOLUTION_TOKEN) missing.push('EVOLUTION_TOKEN');
+      if (!EVOLUTION_BASE_URL_CURRENT) missing.push('EVOLUTION_BASE_URL');
+      if (!EVOLUTION_INSTANCE_CURRENT) missing.push('EVOLUTION_INSTANCE');
+      if (!EVOLUTION_TOKEN_CURRENT) missing.push('EVOLUTION_TOKEN');
       
       console.error(`[EVOLUTION API] Variáveis de ambiente faltando: ${missing.join(', ')}`);
+      console.error(`[EVOLUTION API] EVOLUTION_INSTANCE:`, EVOLUTION_INSTANCE_CURRENT || 'undefined');
       return {
         success: false,
         error: {
@@ -163,7 +169,7 @@ async function enviarMensagem(numero, mensagem, linkPreview = false) {
     };
     const headers = {
       'Content-Type': 'application/json',
-      'apikey': EVOLUTION_TOKEN
+      'apikey': EVOLUTION_TOKEN_CURRENT
     };
 
     console.log(`[EVOLUTION API] Enviando mensagem para ${numero} via ${url}`);
