@@ -15,7 +15,12 @@ const EVOLUTION_TOKEN = process.env.EVOLUTION_TOKEN;
 async function enviarPresence(numero) {
   try {
     // Verificar se as variáveis de ambiente estão configuradas
-    if (!EVOLUTION_BASE_URL || !EVOLUTION_INSTANCE || !EVOLUTION_TOKEN) {
+    // Recarregar do process.env para garantir que está atualizado
+    const EVOLUTION_BASE_URL_CURRENT = process.env.EVOLUTION_BASE_URL;
+    const EVOLUTION_INSTANCE_CURRENT = process.env.EVOLUTION_INSTANCE;
+    const EVOLUTION_TOKEN_CURRENT = process.env.EVOLUTION_TOKEN;
+    
+    if (!EVOLUTION_BASE_URL_CURRENT || !EVOLUTION_INSTANCE_CURRENT || !EVOLUTION_TOKEN_CURRENT) {
       // Não falhar se as variáveis não estiverem configuradas, apenas retornar sucesso falso
       return {
         success: false,
@@ -23,7 +28,7 @@ async function enviarPresence(numero) {
       };
     }
     
-    const url = `${EVOLUTION_BASE_URL}/chat/sendPresence/${EVOLUTION_INSTANCE}`;
+    const url = `${EVOLUTION_BASE_URL_CURRENT}/chat/sendPresence/${EVOLUTION_INSTANCE_CURRENT}`;
     const payload = {
       number: numero,
       options: {
