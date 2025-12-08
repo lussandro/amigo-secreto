@@ -220,4 +220,10 @@ async function enviarMensagemComBotoes(numero, titulo, descricao, rodape, botoes
   }
 }
 
-module.exports = { enviarMensagem, enviarMensagemComBotoes, testarFormatoAPI };
+module.exports = { 
+  enviarMensagem, 
+  enviarMensagemComBotoes, 
+  testarFormatoAPI,
+  enviarPresence,
+  delayAleatorio
+};
