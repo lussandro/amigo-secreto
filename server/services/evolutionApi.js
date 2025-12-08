@@ -5,6 +5,57 @@ const EVOLUTION_BASE_URL = process.env.EVOLUTION_BASE_URL;
 const EVOLUTION_INSTANCE = process.env.EVOLUTION_INSTANCE;
 const EVOLUTION_TOKEN = process.env.EVOLUTION_TOKEN;
 
+/**
+ * Envia presence (status de digitação) antes de enviar mensagem
+ * Isso ajuda a evitar banimentos da Meta simulando comportamento humano
+ * 
+ * @param {string} numero - Número do destinatário (formato internacional)
+ * @returns {Promise<{success: boolean, data?: any, error?: any}>}
+ */
+async function enviarPresence(numero) {
+  try {
+    const url = `${EVOLUTION_BASE_URL}/chat/sendPresence/${EVOLUTION_INSTANCE}`;
+    const payload = {
+      number: numero,
+      options: {
+        presence: 'composing', // Simula que está digitando
+        delay: 2000 // Delay de 2 segundos
+      }
+    };
+    const headers = {
+      'Content-Type': 'application/json',
+      'apikey': EVOLUTION_TOKEN
+    };
+
+    const response = await axios.post(url, payload, { headers });
+
+    return {
+      success: true,
+      data: response.data
+    };
+  } catch (error) {
+    // Não falhar se o presence der erro, apenas logar
+    console.warn('Aviso ao enviar presence:', error.response?.data || error.message);
+    return {
+      success: false,
+      error: error.response?.data || error.message
+    };
+  }
+}
+
+/**
+ * Gera um delay aleatório entre min e max segundos
+ * 
+ * @param {number} min - Delay mínimo em segundos
+ * @param {number} max - Delay máximo em segundos
+ * @returns {number} Delay em milissegundos
+ */
+function delayAleatorio(minSegundos = 10, maxSegundos = 45) {
+  const min = minSegundos * 1000;
+  const max = maxSegundos * 1000;
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 // Função para testar diferentes formatos de API (útil para debug)
 async function testarFormatoAPI(numero, mensagem) {
   const formatos = [

@@ -1,5 +1,5 @@
 const db = require('../database');
-const { enviarMensagem, enviarMensagemComBotoes } = require('../services/evolutionApi');
+const { enviarMensagem, enviarPresence, delayAleatorio } = require('../services/evolutionApi');
 const { generateToken } = require('../utils/crypto');
 require('dotenv').config();
 
@@ -102,7 +102,16 @@ async function enviarMensagemTeste(req, res) {
     
     const resultados = [];
     
-    for (const participante of participantes) {
+    for (let i = 0; i < participantes.length; i++) {
+      const participante = participantes[i];
+      
+      // Enviar presence antes de cada mensagem
+      console.log(`[${i + 1}/${participantes.length}] Enviando presence para ${participante.nome}...`);
+      await enviarPresence(participante.telefone);
+      
+      // Aguardar um pouco após o presence
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
       // Criar um link de teste único para cada participante
       const tokenTeste = generateToken();
       const linkTeste = `${APP_BASE_URL}/reveal/${tokenTeste}`;
@@ -118,10 +127,8 @@ ${linkTeste}
 
 Parabéns!! Teste ok? 🎉`;
       
+      console.log(`[${i + 1}/${participantes.length}] Enviando mensagem de teste para ${participante.nome}...`);
       const resultado = await enviarMensagem(participante.telefone, mensagem, true);
-      
-      // Aguardar um pouco entre envios
-      await new Promise(resolve => setTimeout(resolve, 300));
       
       resultados.push({
         participante: participante.nome,
@@ -129,6 +136,13 @@ Parabéns!! Teste ok? 🎉`;
         status: resultado.success ? 'enviado' : 'erro',
         erro: resultado.error || null
       });
+      
+      // Delay aleatório entre mensagens (exceto na última)
+      if (i < participantes.length - 1) {
+        const delay = delayAleatorio(10, 45);
+        console.log(`[${i + 1}/${participantes.length}] Aguardando ${delay / 1000}s antes do próximo envio...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
     
     res.json({
@@ -257,6 +271,13 @@ async function enviarMensagemTesteIndividual(req, res) {
       return res.status(404).json({ error: 'Participante não encontrado' });
     }
     
+    // Enviar presence antes da mensagem
+    console.log(`Enviando presence para ${participante.nome}...`);
+    await enviarPresence(participante.telefone);
+    
+    // Aguardar um pouco após o presence
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
     // Criar um link de teste único
     const tokenTeste = generateToken();
     const linkTeste = `${APP_BASE_URL}/reveal/${tokenTeste}`;
@@ -272,6 +293,7 @@ ${linkTeste}
 
 Parabéns!! Teste ok? 🎉`;
     
+    console.log(`Enviando mensagem de teste para ${participante.nome}...`);
     const resultado = await enviarMensagem(participante.telefone, mensagem, true);
     
     // Registrar envio
