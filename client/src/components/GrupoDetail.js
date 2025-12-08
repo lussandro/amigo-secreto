@@ -13,6 +13,17 @@ function GrupoDetail({ grupo, onBack, apiBaseUrl }) {
     loadData();
   }, [grupo.id]);
 
+  // Auto-refresh dos dados a cada 5 segundos se houver sorteio
+  useEffect(() => {
+    if (sorteio && grupo.status === 'sorteado') {
+      const interval = setInterval(() => {
+        loadData();
+      }, 5000); // Atualiza a cada 5 segundos
+
+      return () => clearInterval(interval);
+    }
+  }, [sorteio, grupo.status]);
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -301,28 +312,107 @@ function GrupoDetail({ grupo, onBack, apiBaseUrl }) {
       {/* Resultado do Sorteio */}
       {sorteio && (
         <div className="card">
-          <h3 style={{ marginBottom: '1rem' }}>Resultado do Sorteio</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3>Resultado do Sorteio</h3>
+            <div style={{ 
+              fontSize: '0.875rem', 
+              color: '#6b7280',
+              padding: '0.5rem 1rem',
+              backgroundColor: '#f3f4f6',
+              borderRadius: '8px',
+              fontWeight: '600'
+            }}>
+              {sorteio.filter(s => s.visualizacoes > 0).length} de {sorteio.length} visualizados
+            </div>
+          </div>
+          <div style={{ marginBottom: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ 
+                display: 'inline-block', 
+                width: '12px', 
+                height: '12px', 
+                borderRadius: '50%', 
+                backgroundColor: '#10b981' 
+              }}></span>
+              <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Visualizado</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ 
+                display: 'inline-block', 
+                width: '12px', 
+                height: '12px', 
+                borderRadius: '50%', 
+                backgroundColor: '#e5e7eb' 
+              }}></span>
+              <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Não visualizado</span>
+            </div>
+          </div>
           <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>Status</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left' }}>Participante</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>Amigo</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left' }}>Link</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>Visualizações</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>Visualizado em</th>
                 </tr>
               </thead>
               <tbody>
                 {sorteio.map(s => (
-                  <tr key={s.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                    <td style={{ padding: '0.75rem' }}>{s.participante_nome}</td>
-                    <td style={{ padding: '0.75rem' }}>{s.amigo_nome}</td>
+                  <tr 
+                    key={s.id} 
+                    style={{ 
+                      borderBottom: '1px solid #e5e7eb',
+                      backgroundColor: s.visualizacoes > 0 ? '#f0fdf4' : 'transparent'
+                    }}
+                  >
                     <td style={{ padding: '0.75rem' }}>
-                      <a href={s.link_visualizacao} target="_blank" rel="noopener noreferrer" style={{ color: '#667eea', wordBreak: 'break-all' }}>
+                      {s.visualizacoes > 0 ? (
+                        <span style={{ 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: '0.25rem',
+                          color: '#10b981',
+                          fontWeight: '600',
+                          fontSize: '0.875rem'
+                        }}>
+                          <span style={{ fontSize: '1rem' }}>✓</span>
+                          Visualizado
+                        </span>
+                      ) : (
+                        <span style={{ 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: '0.25rem',
+                          color: '#6b7280',
+                          fontSize: '0.875rem'
+                        }}>
+                          <span style={{ fontSize: '1rem' }}>○</span>
+                          Pendente
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ padding: '0.75rem' }}>{s.participante_nome}</td>
+                    <td style={{ padding: '0.75rem' }}>
+                      <a 
+                        href={s.link_visualizacao} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        style={{ 
+                          color: s.visualizacoes > 0 ? '#6b7280' : '#667eea', 
+                          wordBreak: 'break-all',
+                          textDecoration: s.visualizacoes > 0 ? 'line-through' : 'underline'
+                        }}
+                      >
                         {s.link_visualizacao}
                       </a>
                     </td>
-                    <td style={{ padding: '0.75rem' }}>{s.visualizacoes}</td>
+                    <td style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                      {s.visualizado_em 
+                        ? new Date(s.visualizado_em).toLocaleString('pt-BR')
+                        : '-'
+                      }
+                    </td>
                   </tr>
                 ))}
               </tbody>

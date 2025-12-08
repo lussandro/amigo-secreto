@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 
   (window.location.origin.includes('localhost:3000') 
@@ -9,16 +9,19 @@ function RevealPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const hasLoadedRef = useRef(false); // Usar ref para prevenir múltiplas chamadas
 
   useEffect(() => {
     const token = window.location.pathname.split('/reveal/')[1];
-    if (token) {
+    if (token && !hasLoadedRef.current) {
+      hasLoadedRef.current = true; // Marcar antes de fazer a chamada
       loadReveal(token);
-    } else {
+    } else if (!token) {
       setError('Token não encontrado');
       setLoading(false);
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Executar apenas uma vez
 
   const loadReveal = async (token) => {
     try {
