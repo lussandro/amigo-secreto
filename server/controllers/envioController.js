@@ -284,9 +284,12 @@ async function enviarMensagemTesteIndividual(req, res) {
   try {
     const { grupo_id, participante_id } = req.params;
     
+    console.log(`[TESTE INDIVIDUAL] Iniciando teste para grupo ${grupo_id}, participante ${participante_id}`);
+    
     // Verificar se o grupo existe
     const grupo = await db.get('SELECT * FROM grupos WHERE id = ?', [grupo_id]);
     if (!grupo) {
+      console.log(`[TESTE INDIVIDUAL] Grupo ${grupo_id} não encontrado`);
       return res.status(404).json({ error: 'Grupo não encontrado' });
     }
     
@@ -297,12 +300,16 @@ async function enviarMensagemTesteIndividual(req, res) {
     );
     
     if (!participante) {
+      console.log(`[TESTE INDIVIDUAL] Participante ${participante_id} não encontrado no grupo ${grupo_id}`);
       return res.status(404).json({ error: 'Participante não encontrado' });
     }
     
+    console.log(`[TESTE INDIVIDUAL] Participante encontrado: ${participante.nome} (${participante.telefone})`);
+    
     // Enviar presence antes da mensagem
-    console.log(`Enviando presence para ${participante.nome}...`);
-    await enviarPresence(participante.telefone);
+    console.log(`[TESTE INDIVIDUAL] Enviando presence para ${participante.nome}...`);
+    const presenceResult = await enviarPresence(participante.telefone);
+    console.log(`[TESTE INDIVIDUAL] Presence enviado:`, presenceResult.success ? 'OK' : 'FALHOU');
     
     // Aguardar um pouco após o presence
     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -313,7 +320,7 @@ async function enviarMensagemTesteIndividual(req, res) {
     
     const mensagem = `Olá ${participante.nome}! 🧪
 
-Esta é uma mensagem de TESTE do sistema de Amigo Secreto.
+Esta é uma mensagem de TESTE INDIVIDUAL do sistema de Amigo Secreto.
 
 Se você recebeu esta mensagem, a integração com a Evolution API está funcionando perfeitamente! ✅
 
@@ -322,8 +329,10 @@ ${linkTeste}
 
 Parabéns!! Teste ok? 🎉`;
     
-    console.log(`Enviando mensagem de teste para ${participante.nome}...`);
+    console.log(`[TESTE INDIVIDUAL] Enviando mensagem de teste para ${participante.nome}...`);
     const resultado = await enviarMensagem(participante.telefone, mensagem, true);
+    
+    console.log(`[TESTE INDIVIDUAL] Resultado do envio:`, resultado.success ? 'SUCESSO' : 'ERRO', resultado.error || '');
     
     // Registrar envio
     await db.run(
@@ -337,6 +346,8 @@ Parabéns!! Teste ok? 🎉`;
       ]
     );
     
+    console.log(`[TESTE INDIVIDUAL] Envio registrado no banco de dados`);
+    
     res.json({
       success: resultado.success,
       message: resultado.success ? 'Mensagem de teste enviada com sucesso' : 'Erro ao enviar mensagem de teste',
@@ -344,8 +355,8 @@ Parabéns!! Teste ok? 🎉`;
       erro: resultado.error || null
     });
   } catch (error) {
-    console.error('Erro ao enviar mensagem de teste individual:', error);
-    res.status(500).json({ error: 'Erro ao enviar mensagem de teste' });
+    console.error('[TESTE INDIVIDUAL] Erro ao enviar mensagem de teste individual:', error);
+    res.status(500).json({ error: 'Erro ao enviar mensagem de teste', details: error.message });
   }
 }
 
