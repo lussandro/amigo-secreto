@@ -150,7 +150,7 @@ async function enviarMensagem(numero, mensagem, linkPreview = false) {
     
     // Formato correto conforme documentação oficial
     // https://doc.evolution-api.com/v2/api-reference/message-controller/send-text
-    const url = `${EVOLUTION_BASE_URL}/message/sendText/${EVOLUTION_INSTANCE}`;
+    const url = `${EVOLUTION_BASE_URL_CURRENT}/message/sendText/${EVOLUTION_INSTANCE_CURRENT}`;
     const payload = {
       number: numero,
       text: mensagem,
