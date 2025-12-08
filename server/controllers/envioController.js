@@ -1,5 +1,9 @@
 const db = require('../database');
 const { enviarMensagem, enviarMensagemComBotoes } = require('../services/evolutionApi');
+const { generateToken } = require('../utils/crypto');
+require('dotenv').config();
+
+const APP_BASE_URL = process.env.APP_BASE_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'http://localhost:5000');
 
 async function enviarLinks(req, res) {
   try {
