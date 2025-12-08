@@ -103,15 +103,22 @@ async function enviarMensagemTeste(req, res) {
     const resultados = [];
     
     for (const participante of participantes) {
+      // Criar um link de teste único para cada participante
+      const tokenTeste = generateToken();
+      const linkTeste = `${APP_BASE_URL}/reveal/${tokenTeste}`;
+      
       const mensagem = `Olá ${participante.nome}! 🧪
 
 Esta é uma mensagem de TESTE do sistema de Amigo Secreto.
 
-Se você recebeu esta mensagem, significa que a integração com o WhatsApp está funcionando corretamente! ✅
+Se você recebeu esta mensagem, a integração com a Evolution API está funcionando perfeitamente! ✅
 
-Grupo: ${grupo.nome_do_grupo}`;
+Clique no link abaixo para testar:
+${linkTeste}
+
+Parabéns!! Teste ok? 🎉`;
       
-      const resultado = await enviarMensagem(participante.telefone, mensagem);
+      const resultado = await enviarMensagem(participante.telefone, mensagem, true);
       
       // Aguardar um pouco entre envios
       await new Promise(resolve => setTimeout(resolve, 300));
