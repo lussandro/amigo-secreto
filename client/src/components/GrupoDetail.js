@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Toast from './Toast';
 
 function GrupoDetail({ grupo, onBack, apiBaseUrl }) {
   const [participantes, setParticipantes] = useState([]);
@@ -7,7 +8,9 @@ function GrupoDetail({ grupo, onBack, apiBaseUrl }) {
   const [loading, setLoading] = useState(true);
   const [showParticipanteForm, setShowParticipanteForm] = useState(false);
   const [participanteForm, setParticipanteForm] = useState({ nome: '', telefone: '' });
-  const [message, setMessage] = useState(null);
+  const [editingParticipante, setEditingParticipante] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [filtroVisualizacao, setFiltroVisualizacao] = useState('todos'); // todos, visualizados, pendentes
 
   useEffect(() => {
     loadData();
@@ -52,6 +55,38 @@ function GrupoDetail({ grupo, onBack, apiBaseUrl }) {
     }
   };
 
+  const handleEditParticipante = (participante) => {
+    setEditingParticipante(participante);
+    setParticipanteForm({ nome: participante.nome, telefone: participante.telefone });
+    setShowParticipanteForm(true);
+  };
+
+  const handleUpdateParticipante = async (e) => {
+    e.preventDefault();
+    if (!editingParticipante) return;
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/participantes/${editingParticipante.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(participanteForm)
+      });
+
+      if (response.ok) {
+        setParticipanteForm({ nome: '', telefone: '' });
+        setShowParticipanteForm(false);
+        setEditingParticipante(null);
+        loadData();
+        setToast({ message: 'Participante atualizado com sucesso!', type: 'success' });
+      } else {
+        const error = await response.json();
+        setToast({ message: error.error || 'Erro ao atualizar participante', type: 'error' });
+      }
+    } catch (error) {
+      setToast({ message: 'Erro ao atualizar participante', type: 'error' });
+    }
+  };
+
   const handleAddParticipante = async (e) => {
     e.preventDefault();
     try {
@@ -65,13 +100,13 @@ function GrupoDetail({ grupo, onBack, apiBaseUrl }) {
         setParticipanteForm({ nome: '', telefone: '' });
         setShowParticipanteForm(false);
         loadData();
-        setMessage({ type: 'success', text: 'Participante adicionado com sucesso!' });
+        setToast({ message: 'Participante adicionado com sucesso!', type: 'success' });
       } else {
         const error = await response.json();
-        setMessage({ type: 'error', text: error.error || 'Erro ao adicionar participante' });
+        setToast({ message: error.error || 'Erro ao adicionar participante', type: 'error' });
       }
     } catch (error) {
-      setMessage({ type: 'error', text: 'Erro ao adicionar participante' });
+      setToast({ message: 'Erro ao adicionar participante', type: 'error' });
     }
   };
 
@@ -87,15 +122,20 @@ function GrupoDetail({ grupo, onBack, apiBaseUrl }) {
 
       if (response.ok) {
         loadData();
+        setToast({ message: 'Participante removido com sucesso!', type: 'success' });
+      } else {
+        const error = await response.json();
+        setToast({ message: error.error || 'Erro ao remover participante', type: 'error' });
       }
     } catch (error) {
       console.error('Erro ao deletar participante:', error);
+      setToast({ message: 'Erro ao remover participante', type: 'error' });
     }
   };
 
   const handleRealizarSorteio = async () => {
     if (participantes.length < 3) {
-      setMessage({ type: 'error', text: 'É necessário pelo menos 3 participantes para realizar o sorteio' });
+      setToast({ message: 'É necessário pelo menos 3 participantes para realizar o sorteio', type: 'error' });
       return;
     }
 
@@ -110,14 +150,14 @@ function GrupoDetail({ grupo, onBack, apiBaseUrl }) {
 
       if (response.ok) {
         const data = await response.json();
-        setMessage({ type: 'success', text: data.message });
+        setToast({ message: data.message, type: 'success' });
         loadData();
       } else {
         const error = await response.json();
-        setMessage({ type: 'error', text: error.error || 'Erro ao realizar sorteio' });
+        setToast({ message: error.error || 'Erro ao realizar sorteio', type: 'error' });
       }
     } catch (error) {
-      setMessage({ type: 'error', text: 'Erro ao realizar sorteio' });
+      setToast({ message: 'Erro ao realizar sorteio', type: 'error' });
     }
   };
 
@@ -133,20 +173,27 @@ function GrupoDetail({ grupo, onBack, apiBaseUrl }) {
 
       if (response.ok) {
         const data = await response.json();
-        setMessage({ type: 'success', text: 'Links enviados com sucesso!' });
+        const sucessos = data.resultados?.filter(r => r.status === 'enviado').length || 0;
+        const erros = data.resultados?.filter(r => r.status === 'erro').length || 0;
+        
+        if (erros === 0) {
+          setToast({ message: `Links enviados com sucesso para ${sucessos} participantes!`, type: 'success' });
+        } else {
+          setToast({ message: `Enviados: ${sucessos}, Erros: ${erros}`, type: 'warning' });
+        }
         loadData();
       } else {
         const error = await response.json();
-        setMessage({ type: 'error', text: error.error || 'Erro ao enviar links' });
+        setToast({ message: error.error || 'Erro ao enviar links', type: 'error' });
       }
     } catch (error) {
-      setMessage({ type: 'error', text: 'Erro ao enviar links' });
+      setToast({ message: 'Erro ao enviar links', type: 'error' });
     }
   };
 
   const handleEnviarMensagemTeste = async () => {
     if (participantes.length === 0) {
-      setMessage({ type: 'error', text: 'Não há participantes no grupo para enviar mensagem de teste' });
+      setToast({ message: 'Não há participantes no grupo para enviar mensagem de teste', type: 'error' });
       return;
     }
 
@@ -164,45 +211,18 @@ function GrupoDetail({ grupo, onBack, apiBaseUrl }) {
         const sucessos = data.resultados.filter(r => r.status === 'enviado').length;
         const erros = data.resultados.filter(r => r.status === 'erro').length;
         
-        let mensagem = `Mensagens de teste enviadas! Sucessos: ${sucessos}`;
-        if (erros > 0) {
-          mensagem += `, Erros: ${erros}`;
-        }
-        
-        setMessage({ type: sucessos > 0 ? 'success' : 'error', text: mensagem });
-        
-        // Mostrar detalhes dos erros se houver
-        if (erros > 0) {
-          const primeiroErro = data.resultados.find(r => r.status === 'erro');
-          if (primeiroErro && primeiroErro.erro) {
-            const erro = primeiroErro.erro;
-            let erroMsg = '';
-            
-            if (erro.data) {
-              erroMsg = erro.data.message || erro.data.error || JSON.stringify(erro.data);
-            } else if (erro.message) {
-              erroMsg = erro.message;
-            } else {
-              erroMsg = JSON.stringify(erro);
-            }
-            
-            const statusInfo = erro.status ? ` (Status: ${erro.status} ${erro.statusText || ''})` : '';
-            
-            console.error('Detalhes do erro completo:', erro);
-            
-            // Mostrar erro mais detalhado na mensagem
-            setMessage({ 
-              type: 'error', 
-              text: `${mensagem}${statusInfo}\n\nErro: ${erroMsg}\n\nVerifique o console (F12) para mais detalhes.` 
-            });
-          }
+        if (erros === 0) {
+          setToast({ message: `Mensagens de teste enviadas com sucesso para ${sucessos} participantes!`, type: 'success' });
+        } else {
+          setToast({ message: `Enviados: ${sucessos}, Erros: ${erros}. Verifique o console (F12) para detalhes.`, type: 'warning' });
+          console.error('Erros no envio:', data.resultados.filter(r => r.status === 'erro'));
         }
       } else {
         const error = await response.json();
-        setMessage({ type: 'error', text: error.error || 'Erro ao enviar mensagem de teste' });
+        setToast({ message: error.error || 'Erro ao enviar mensagem de teste', type: 'error' });
       }
     } catch (error) {
-      setMessage({ type: 'error', text: 'Erro ao enviar mensagem de teste' });
+      setToast({ message: 'Erro ao enviar mensagem de teste', type: 'error' });
     }
   };
 
@@ -220,12 +240,6 @@ function GrupoDetail({ grupo, onBack, apiBaseUrl }) {
           </div>
           <button className="btn btn-secondary" onClick={onBack}>Voltar</button>
         </div>
-
-        {message && (
-          <div className={message.type === 'error' ? 'error-message' : 'success-message'}>
-            {message.text}
-          </div>
-        )}
       </div>
 
       {/* Participantes */}
@@ -250,7 +264,12 @@ function GrupoDetail({ grupo, onBack, apiBaseUrl }) {
         </div>
 
         {showParticipanteForm && (
-          <form onSubmit={handleAddParticipante} style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #e5e7eb' }}>
+          <form onSubmit={editingParticipante ? handleUpdateParticipante : handleAddParticipante} style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #e5e7eb' }}>
+            {editingParticipante && (
+              <div style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#eff6ff', borderRadius: '8px', color: '#1e40af' }}>
+                ✏️ Editando: {editingParticipante.nome}
+              </div>
+            )}
             <div className="form-group">
               <label>Nome *</label>
               <input
@@ -265,12 +284,38 @@ function GrupoDetail({ grupo, onBack, apiBaseUrl }) {
               <input
                 type="text"
                 value={participanteForm.telefone}
-                onChange={(e) => setParticipanteForm({ ...participanteForm, telefone: e.target.value })}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '');
+                  setParticipanteForm({ ...participanteForm, telefone: value });
+                }}
                 placeholder="Ex: 5548999999999"
                 required
+                maxLength="15"
               />
+              {participanteForm.telefone && participanteForm.telefone.length < 10 && (
+                <small style={{ color: '#ef4444', marginTop: '0.25rem', display: 'block' }}>
+                  Telefone deve ter pelo menos 10 dígitos
+                </small>
+              )}
             </div>
-            <button type="submit" className="btn btn-success">Adicionar</button>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button type="submit" className="btn btn-success">
+                {editingParticipante ? 'Salvar Alterações' : 'Adicionar'}
+              </button>
+              {editingParticipante && (
+                <button 
+                  type="button" 
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setEditingParticipante(null);
+                    setParticipanteForm({ nome: '', telefone: '' });
+                    setShowParticipanteForm(false);
+                  }}
+                >
+                  Cancelar
+                </button>
+              )}
+            </div>
           </form>
         )}
 
@@ -285,13 +330,24 @@ function GrupoDetail({ grupo, onBack, apiBaseUrl }) {
                   <div style={{ color: '#6b7280', fontSize: '0.875rem' }}>{p.telefone}</div>
                 </div>
                 {grupo.status === 'rascunho' && (
-                  <button
-                    className="btn btn-danger"
-                    onClick={() => handleDeleteParticipante(p.id)}
-                    style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
-                  >
-                    Remover
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      className="btn"
+                      onClick={() => handleEditParticipante(p)}
+                      style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', backgroundColor: '#3b82f6', color: 'white' }}
+                      title="Editar participante"
+                    >
+                      ✏️ Editar
+                    </button>
+                    <button
+                      className="btn btn-danger"
+                      onClick={() => handleDeleteParticipante(p.id)}
+                      style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+                      title="Remover participante"
+                    >
+                      🗑️ Remover
+                    </button>
+                  </div>
                 )}
               </div>
             ))
@@ -312,19 +368,95 @@ function GrupoDetail({ grupo, onBack, apiBaseUrl }) {
       {/* Resultado do Sorteio */}
       {sorteio && (
         <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
             <h3>Resultado do Sorteio</h3>
-            <div style={{ 
-              fontSize: '0.875rem', 
-              color: '#6b7280',
-              padding: '0.5rem 1rem',
-              backgroundColor: '#f3f4f6',
-              borderRadius: '8px',
-              fontWeight: '600'
-            }}>
-              {sorteio.filter(s => s.visualizacoes > 0).length} de {sorteio.length} visualizados
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ 
+                fontSize: '0.875rem', 
+                color: '#6b7280',
+                padding: '0.5rem 1rem',
+                backgroundColor: '#f3f4f6',
+                borderRadius: '8px',
+                fontWeight: '600'
+              }}>
+                {sorteio.filter(s => s.visualizacoes > 0).length} de {sorteio.length} visualizados
+              </div>
+              <div style={{ 
+                fontSize: '0.875rem', 
+                color: '#6b7280',
+                padding: '0.5rem 1rem',
+                backgroundColor: '#eff6ff',
+                borderRadius: '8px'
+              }}>
+                📊 {sorteio.length} participantes
+              </div>
+              <button
+                onClick={() => {
+                  const csv = [
+                    ['Participante', 'Status', 'Visualizado em'].join(','),
+                    ...sorteio.map(s => [
+                      `"${s.participante_nome}"`,
+                      s.visualizacoes > 0 ? 'Visualizado' : 'Pendente',
+                      s.visualizado_em ? new Date(s.visualizado_em).toLocaleString('pt-BR') : '-'
+                    ].join(','))
+                  ].join('\n');
+                  
+                  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                  const link = document.createElement('a');
+                  link.href = URL.createObjectURL(blob);
+                  link.download = `amigo-secreto-${grupo.nome_do_grupo}-${new Date().toISOString().split('T')[0]}.csv`;
+                  link.click();
+                  setToast({ message: 'Dados exportados com sucesso!', type: 'success' });
+                }}
+                className="btn"
+                style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', backgroundColor: '#10b981', color: 'white' }}
+              >
+                📥 Exportar CSV
+              </button>
             </div>
           </div>
+          
+          {/* Filtros */}
+          <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.875rem', color: '#6b7280', fontWeight: '600' }}>Filtrar:</span>
+            <button
+              onClick={() => setFiltroVisualizacao('todos')}
+              className="btn"
+              style={{
+                padding: '0.5rem 1rem',
+                fontSize: '0.875rem',
+                backgroundColor: filtroVisualizacao === 'todos' ? '#667eea' : '#f3f4f6',
+                color: filtroVisualizacao === 'todos' ? 'white' : '#6b7280'
+              }}
+            >
+              Todos ({sorteio.length})
+            </button>
+            <button
+              onClick={() => setFiltroVisualizacao('visualizados')}
+              className="btn"
+              style={{
+                padding: '0.5rem 1rem',
+                fontSize: '0.875rem',
+                backgroundColor: filtroVisualizacao === 'visualizados' ? '#10b981' : '#f3f4f6',
+                color: filtroVisualizacao === 'visualizados' ? 'white' : '#6b7280'
+              }}
+            >
+              ✓ Visualizados ({sorteio.filter(s => s.visualizacoes > 0).length})
+            </button>
+            <button
+              onClick={() => setFiltroVisualizacao('pendentes')}
+              className="btn"
+              style={{
+                padding: '0.5rem 1rem',
+                fontSize: '0.875rem',
+                backgroundColor: filtroVisualizacao === 'pendentes' ? '#f59e0b' : '#f3f4f6',
+                color: filtroVisualizacao === 'pendentes' ? 'white' : '#6b7280'
+              }}
+            >
+              ○ Pendentes ({sorteio.filter(s => s.visualizacoes === 0).length})
+            </button>
+          </div>
+          
           <div style={{ marginBottom: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <span style={{ 
@@ -358,7 +490,13 @@ function GrupoDetail({ grupo, onBack, apiBaseUrl }) {
                 </tr>
               </thead>
               <tbody>
-                {sorteio.map(s => (
+                {sorteio
+                  .filter(s => {
+                    if (filtroVisualizacao === 'visualizados') return s.visualizacoes > 0;
+                    if (filtroVisualizacao === 'pendentes') return s.visualizacoes === 0;
+                    return true;
+                  })
+                  .map(s => (
                   <tr 
                     key={s.id} 
                     style={{ 
@@ -394,18 +532,73 @@ function GrupoDetail({ grupo, onBack, apiBaseUrl }) {
                     </td>
                     <td style={{ padding: '0.75rem' }}>{s.participante_nome}</td>
                     <td style={{ padding: '0.75rem' }}>
-                      <a 
-                        href={s.link_visualizacao} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        style={{ 
-                          color: s.visualizacoes > 0 ? '#6b7280' : '#667eea', 
-                          wordBreak: 'break-all',
-                          textDecoration: s.visualizacoes > 0 ? 'line-through' : 'underline'
-                        }}
-                      >
-                        {s.link_visualizacao}
-                      </a>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <a 
+                          href={s.link_visualizacao} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          style={{ 
+                            color: s.visualizacoes > 0 ? '#6b7280' : '#667eea', 
+                            wordBreak: 'break-all',
+                            textDecoration: s.visualizacoes > 0 ? 'line-through' : 'underline',
+                            flex: 1,
+                            minWidth: '200px'
+                          }}
+                        >
+                          {s.link_visualizacao}
+                        </a>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(s.link_visualizacao);
+                            setToast({ message: `Link de ${s.participante_nome} copiado!`, type: 'success' });
+                          }}
+                          style={{
+                            padding: '0.25rem 0.5rem',
+                            backgroundColor: '#f3f4f6',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem'
+                          }}
+                          title="Copiar link"
+                        >
+                          📋
+                        </button>
+                        {grupo.status === 'sorteado' && (
+                          <button
+                            onClick={async () => {
+                              if (!window.confirm(`Reenviar link para ${s.participante_nome}?`)) return;
+                              
+                              try {
+                                const response = await fetch(`${apiBaseUrl}/grupos/${grupo.id}/reenviar/${s.participante_id}`, {
+                                  method: 'POST'
+                                });
+                                
+                                if (response.ok) {
+                                  setToast({ message: `Link reenviado para ${s.participante_nome}!`, type: 'success' });
+                                  loadData();
+                                } else {
+                                  const error = await response.json();
+                                  setToast({ message: error.error || 'Erro ao reenviar', type: 'error' });
+                                }
+                              } catch (error) {
+                                setToast({ message: 'Erro ao reenviar link', type: 'error' });
+                              }
+                            }}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              backgroundColor: '#dbeafe',
+                              border: '1px solid #93c5fd',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '0.75rem'
+                            }}
+                            title="Reenviar link"
+                          >
+                            🔄
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
                       {s.visualizado_em 

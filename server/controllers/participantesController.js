@@ -49,6 +49,45 @@ async function criarParticipante(req, res) {
   }
 }
 
+async function atualizarParticipante(req, res) {
+  try {
+    const { id } = req.params;
+    const { nome, telefone } = req.body;
+    
+    const participante = await db.get('SELECT * FROM participantes WHERE id = ?', [id]);
+    if (!participante) {
+      return res.status(404).json({ error: 'Participante não encontrado' });
+    }
+    
+    // Verificar se o grupo já foi sorteado
+    const grupo = await db.get('SELECT * FROM grupos WHERE id = ?', [participante.grupo_id]);
+    if (grupo.status !== 'rascunho') {
+      return res.status(400).json({ error: 'Não é possível editar participante após o sorteio' });
+    }
+    
+    if (!nome || !telefone) {
+      return res.status(400).json({ error: 'Nome e telefone são obrigatórios' });
+    }
+    
+    if (!validatePhone(telefone)) {
+      return res.status(400).json({ error: 'Telefone inválido. Use formato internacional (DDI + número)' });
+    }
+    
+    const telefoneFormatado = formatPhone(telefone);
+    
+    await db.run(
+      'UPDATE participantes SET nome = ?, telefone = ? WHERE id = ?',
+      [nome, telefoneFormatado, id]
+    );
+    
+    const participanteAtualizado = await db.get('SELECT * FROM participantes WHERE id = ?', [id]);
+    res.json(participanteAtualizado);
+  } catch (error) {
+    console.error('Erro ao atualizar participante:', error);
+    res.status(500).json({ error: 'Erro ao atualizar participante' });
+  }
+}
+
 async function deletarParticipante(req, res) {
   try {
     const { id } = req.params;
@@ -56,6 +95,12 @@ async function deletarParticipante(req, res) {
     const participante = await db.get('SELECT * FROM participantes WHERE id = ?', [id]);
     if (!participante) {
       return res.status(404).json({ error: 'Participante não encontrado' });
+    }
+    
+    // Verificar se o grupo já foi sorteado
+    const grupo = await db.get('SELECT * FROM grupos WHERE id = ?', [participante.grupo_id]);
+    if (grupo.status !== 'rascunho') {
+      return res.status(400).json({ error: 'Não é possível remover participante após o sorteio' });
     }
     
     await db.run('DELETE FROM participantes WHERE id = ?', [id]);
@@ -69,6 +114,7 @@ async function deletarParticipante(req, res) {
 module.exports = {
   listarParticipantes,
   criarParticipante,
+  atualizarParticipante,
   deletarParticipante
 };
 

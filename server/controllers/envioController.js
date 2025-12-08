@@ -150,9 +150,74 @@ async function listarEnvios(req, res) {
   }
 }
 
+async function reenviarLinkIndividual(req, res) {
+  try {
+    const { grupo_id, participante_id } = req.params;
+    
+    // Verificar se o grupo existe e está sorteado
+    const grupo = await db.get('SELECT * FROM grupos WHERE id = ?', [grupo_id]);
+    if (!grupo) {
+      return res.status(404).json({ error: 'Grupo não encontrado' });
+    }
+    
+    if (grupo.status !== 'sorteado' && grupo.status !== 'links_enviados') {
+      return res.status(400).json({ error: 'O sorteio ainda não foi realizado para este grupo' });
+    }
+    
+    // Buscar sorteio do participante
+    const sorteio = await db.get(
+      `SELECT s.*, p.nome, p.telefone
+       FROM sorteios s
+       JOIN participantes p ON s.participante_id = p.id
+       WHERE s.grupo_id = ? AND s.participante_id = ?`,
+      [grupo_id, participante_id]
+    );
+    
+    if (!sorteio) {
+      return res.status(404).json({ error: 'Sorteio não encontrado para este participante' });
+    }
+    
+    // Enviar mensagem com link e linkPreview
+    const mensagem = `Olá ${sorteio.nome}! 🎁
+
+Você tirou no amigo secreto!
+
+Clique no link abaixo para descobrir quem é:
+
+${sorteio.link_visualizacao}
+
+⚠️ Atenção: Este link só pode ser visualizado uma vez!`;
+    
+    const resultado = await enviarMensagem(sorteio.telefone, mensagem, true);
+    
+    // Registrar envio
+    await db.run(
+      `INSERT INTO envios (grupo_id, participante_id, status, resposta_raw)
+       VALUES (?, ?, ?, ?)`,
+      [
+        grupo_id,
+        participante_id,
+        resultado.success ? 'enviado' : 'erro',
+        JSON.stringify(resultado)
+      ]
+    );
+    
+    res.json({
+      success: resultado.success,
+      message: resultado.success ? 'Link reenviado com sucesso' : 'Erro ao reenviar link',
+      participante: sorteio.nome,
+      erro: resultado.error || null
+    });
+  } catch (error) {
+    console.error('Erro ao reenviar link:', error);
+    res.status(500).json({ error: 'Erro ao reenviar link' });
+  }
+}
+
 module.exports = {
   enviarLinks,
   enviarMensagemTeste,
+  reenviarLinkIndividual,
   listarEnvios
 };
 

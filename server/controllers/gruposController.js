@@ -87,11 +87,44 @@ async function deletarGrupo(req, res) {
   }
 }
 
+async function duplicarGrupo(req, res) {
+  try {
+    const { id } = req.params;
+    
+    const grupo = await db.get('SELECT * FROM grupos WHERE id = ?', [id]);
+    if (!grupo) {
+      return res.status(404).json({ error: 'Grupo não encontrado' });
+    }
+    
+    // Criar novo grupo
+    const novoGrupo = await db.run(
+      'INSERT INTO grupos (nome_do_grupo, descricao, status) VALUES (?, ?, ?)',
+      [`${grupo.nome_do_grupo} (Cópia)`, grupo.descricao || null, 'rascunho']
+    );
+    
+    // Copiar participantes
+    const participantes = await db.all('SELECT * FROM participantes WHERE grupo_id = ?', [id]);
+    for (const participante of participantes) {
+      await db.run(
+        'INSERT INTO participantes (grupo_id, nome, telefone) VALUES (?, ?, ?)',
+        [novoGrupo.id, participante.nome, participante.telefone]
+      );
+    }
+    
+    const grupoDuplicado = await db.get('SELECT * FROM grupos WHERE id = ?', [novoGrupo.id]);
+    res.status(201).json(grupoDuplicado);
+  } catch (error) {
+    console.error('Erro ao duplicar grupo:', error);
+    res.status(500).json({ error: 'Erro ao duplicar grupo' });
+  }
+}
+
 module.exports = {
   listarGrupos,
   obterGrupo,
   criarGrupo,
   atualizarGrupo,
-  deletarGrupo
+  deletarGrupo,
+  duplicarGrupo
 };
 
