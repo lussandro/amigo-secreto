@@ -38,7 +38,7 @@ async function enviarPresence(numero) {
     };
     const headers = {
       'Content-Type': 'application/json',
-      'apikey': EVOLUTION_TOKEN
+      'apikey': EVOLUTION_TOKEN_CURRENT
     };
 
     const response = await axios.post(url, payload, { headers });
