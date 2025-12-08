@@ -17,6 +17,10 @@ if (!REDIS_URL) {
   }
 }
 
+// Log da configuração Redis
+console.log('[REDIS] Configurando conexão...');
+console.log('[REDIS] URL:', REDIS_URL ? REDIS_URL.replace(/:[^:@]+@/, ':****@') : 'não configurada');
+
 // Criar filas
 const envioQueue = new Queue('envio-mensagens', REDIS_URL, {
   defaultJobOptions: {
@@ -36,16 +40,33 @@ const envioQueue = new Queue('envio-mensagens', REDIS_URL, {
 });
 
 // Eventos da fila para monitoramento
+envioQueue.on('ready', () => {
+  console.log('[REDIS] ✅ Conectado ao Redis com sucesso!');
+});
+
+envioQueue.on('error', (error) => {
+  console.error('[REDIS] ❌ Erro na conexão Redis:', error.message);
+});
+
+envioQueue.on('waiting', (jobId) => {
+  console.log(`[QUEUE] Job ${jobId} aguardando processamento`);
+});
+
+envioQueue.on('active', (job) => {
+  console.log(`[QUEUE] Job ${job.id} iniciado - Tipo: ${job.data?.tipo || 'desconhecido'}`);
+});
+
 envioQueue.on('completed', (job, result) => {
-  console.log(`[QUEUE] Job ${job.id} completado:`, result);
+  console.log(`[QUEUE] ✅ Job ${job.id} completado:`, result);
 });
 
 envioQueue.on('failed', (job, err) => {
-  console.error(`[QUEUE] Job ${job.id} falhou:`, err.message);
+  console.error(`[QUEUE] ❌ Job ${job.id} falhou:`, err.message);
+  console.error('[QUEUE] Erro completo:', err);
 });
 
 envioQueue.on('stalled', (job) => {
-  console.warn(`[QUEUE] Job ${job.id} travado`);
+  console.warn(`[QUEUE] ⚠️ Job ${job.id} travado`);
 });
 
 module.exports = {

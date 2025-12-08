@@ -5,8 +5,18 @@ require('dotenv').config();
 
 const db = require('./database');
 const routes = require('./routes');
-// Iniciar workers de envio
-require('./workers/envioWorker');
+
+// Iniciar workers de envio (após conectar ao banco)
+// Os workers serão iniciados após a conexão do banco estar pronta
+let workersStarted = false;
+
+function startWorkers() {
+  if (!workersStarted) {
+    console.log('[APP] Iniciando workers de envio...');
+    require('./workers/envioWorker');
+    workersStarted = true;
+  }
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -38,9 +48,13 @@ async function start() {
   try {
     await db.connect();
     
+    // Iniciar workers após conectar ao banco
+    startWorkers();
+    
     app.listen(PORT, () => {
       console.log(`Servidor rodando na porta ${PORT}`);
       console.log(`Ambiente: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`Redis URL: ${process.env.REDIS_URL ? 'Configurada' : 'Não configurada'}`);
     });
   } catch (error) {
     console.error('Erro ao iniciar servidor:', error);
