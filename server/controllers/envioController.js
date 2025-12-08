@@ -3,7 +3,10 @@ const { envioQueue } = require('../services/queue');
 const { generateToken } = require('../utils/crypto');
 require('dotenv').config();
 
-const APP_BASE_URL = process.env.APP_BASE_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'http://localhost:5000');
+// Função para obter APP_BASE_URL em runtime (recarrega do process.env)
+function getAppBaseUrl() {
+  return process.env.APP_BASE_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'http://localhost:5000');
+}
 
 async function enviarLinks(req, res) {
   try {
@@ -86,7 +89,7 @@ async function enviarMensagemTeste(req, res) {
         nome: p.nome,
         telefone: p.telefone
       })),
-      app_base_url: APP_BASE_URL
+      app_base_url: getAppBaseUrl()
     }, {
       jobId: `teste-lote-${grupo_id}-${Date.now()}`
     });
@@ -250,7 +253,7 @@ async function enviarMensagemTesteIndividual(req, res) {
     
     // Criar um link de teste único
     const tokenTeste = generateToken();
-    const linkTeste = `${APP_BASE_URL}/reveal/${tokenTeste}`;
+    const linkTeste = `${getAppBaseUrl()}/reveal/${tokenTeste}`;
     
     // Adicionar job na fila para teste individual
     const job = await envioQueue.add('enviar-mensagem', {

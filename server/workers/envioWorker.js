@@ -129,6 +129,8 @@ Boa sorte e divirta-se! 🎄✨`,
  */
 envioQueue.process('enviar-teste-lote', async (job) => {
   const { grupo_id, participantes, app_base_url } = job.data;
+  // Usar app_base_url do job ou recarregar do process.env
+  const APP_BASE_URL = app_base_url || process.env.APP_BASE_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'http://localhost:5000');
   
   console.log(`[WORKER] Processando lote de teste com ${participantes.length} participantes`);
   
@@ -138,7 +140,7 @@ envioQueue.process('enviar-teste-lote', async (job) => {
     const participante = participantes[i];
     const { generateToken } = require('../utils/crypto');
     const tokenTeste = generateToken();
-    const linkTeste = `${app_base_url}/reveal/${tokenTeste}`;
+    const linkTeste = `${APP_BASE_URL}/reveal/${tokenTeste}`;
     
     // Calcular delay
     const delay = i === 0 ? 0 : delayAleatorio(10, 45);
