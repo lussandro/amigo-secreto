@@ -5,15 +5,18 @@ require('dotenv').config();
 
 // Em desenvolvimento, usar porta 3000 (frontend React)
 // Em produção, usar a porta configurada (backend serve o frontend)
-// Se APP_BASE_URL estiver definido explicitamente, usar ele
-let APP_BASE_URL = process.env.APP_BASE_URL;
-if (!APP_BASE_URL) {
-  APP_BASE_URL = process.env.NODE_ENV === 'production' 
-    ? 'http://localhost:5000' 
-    : 'http://localhost:3000';
-} else if (process.env.NODE_ENV !== 'production' && APP_BASE_URL.includes('localhost:5000')) {
-  // Se estiver em desenvolvimento e o APP_BASE_URL apontar para porta 5000, mudar para 3000
-  APP_BASE_URL = APP_BASE_URL.replace(':5000', ':3000');
+// Função para obter APP_BASE_URL em runtime (recarrega do process.env)
+function getAppBaseUrl() {
+  let url = process.env.APP_BASE_URL;
+  if (!url) {
+    url = process.env.NODE_ENV === 'production' 
+      ? 'http://localhost:5000'
+      : 'http://localhost:3000';
+  } else if (process.env.NODE_ENV !== 'production' && url.includes('localhost:5000')) {
+    // Se estiver em desenvolvimento e o APP_BASE_URL apontar para porta 5000, mudar para 3000
+    url = url.replace(':5000', ':3000');
+  }
+  return url;
 }
 
 async function realizarSorteio(req, res) {
@@ -48,7 +51,7 @@ async function realizarSorteio(req, res) {
     const sorteios = [];
     for (const [participanteId, amigoId] of resultadoSorteio.entries()) {
       const token = generateToken();
-      const link = `${APP_BASE_URL}/reveal/${token}`;
+      const link = `${getAppBaseUrl()}/reveal/${token}`;
       
       await db.run(
         `INSERT INTO sorteios (grupo_id, participante_id, amigo_id, token_revelacao, link_visualizacao, visualizacoes)
