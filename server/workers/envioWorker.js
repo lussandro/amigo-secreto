@@ -81,7 +81,7 @@ envioQueue.process('enviar-lote', async (job) => {
 
 Olá ${sorteio.nome}!
 
-O sorteio do amigo secreto foi realizado e você já pode descobrir quem tirou você! 🎉
+O sorteio do amigo secreto foi realizado e você já pode descobrir quem você tirou! 🎉
 
 *Como funciona:*
 1️⃣ Clique no link abaixo
