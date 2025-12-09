@@ -115,7 +115,75 @@ async function verificarLinks(req, res) {
   }
 }
 
+async function limparSorteiosDuplicados(req, res) {
+  try {
+    const { grupo_id } = req.params;
+
+    // Buscar todos os sorteios do grupo
+    const sorteios = await db.all(
+      'SELECT * FROM sorteios WHERE grupo_id = ? ORDER BY id DESC',
+      [grupo_id]
+    );
+
+    // Agrupar por participante_id, mantendo apenas o mais recente (maior ID)
+    const participantesVistos = new Set();
+    const idsParaManter = [];
+    const idsParaRemover = [];
+
+    for (const s of sorteios) {
+      if (!participantesVistos.has(s.participante_id)) {
+        participantesVistos.add(s.participante_id);
+        idsParaManter.push(s.id);
+      } else {
+        idsParaRemover.push(s.id);
+      }
+    }
+
+    // Remover duplicados
+    if (idsParaRemover.length > 0) {
+      await db.run(
+        `DELETE FROM sorteios WHERE id IN (${idsParaRemover.join(',')})`
+      );
+    }
+
+    res.json({
+      message: 'Sorteios duplicados removidos',
+      grupo_id: grupo_id,
+      total_antes: sorteios.length,
+      mantidos: idsParaManter.length,
+      removidos: idsParaRemover.length,
+      ids_removidos: idsParaRemover
+    });
+  } catch (error) {
+    console.error('Erro ao limpar sorteios duplicados:', error);
+    res.status(500).json({ error: error.message || 'Erro ao limpar sorteios' });
+  }
+}
+
+async function resetarGrupo(req, res) {
+  try {
+    const { grupo_id } = req.params;
+
+    // Deletar todos os sorteios do grupo
+    await db.run('DELETE FROM sorteios WHERE grupo_id = ?', [grupo_id]);
+
+    // Resetar status do grupo
+    await db.run('UPDATE grupos SET status = ? WHERE id = ?', ['rascunho', grupo_id]);
+
+    res.json({
+      message: 'Grupo resetado com sucesso',
+      grupo_id: grupo_id,
+      novo_status: 'rascunho'
+    });
+  } catch (error) {
+    console.error('Erro ao resetar grupo:', error);
+    res.status(500).json({ error: error.message || 'Erro ao resetar grupo' });
+  }
+}
+
 module.exports = {
   corrigirLinks,
-  verificarLinks
+  verificarLinks,
+  limparSorteiosDuplicados,
+  resetarGrupo
 };

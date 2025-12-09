@@ -43,6 +43,8 @@ router.post('/teste-api', testController.testarAPI);
 const adminController = require('../controllers/adminController');
 router.get('/admin/verificar-links', adminController.verificarLinks);
 router.post('/admin/corrigir-links', adminController.corrigirLinks);
+router.post('/admin/grupos/:grupo_id/limpar-duplicados', adminController.limparSorteiosDuplicados);
+router.post('/admin/grupos/:grupo_id/resetar', adminController.resetarGrupo);
 
 module.exports = router;
 
