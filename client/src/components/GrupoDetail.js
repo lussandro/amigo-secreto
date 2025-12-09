@@ -11,24 +11,27 @@ function GrupoDetail({ grupo, onBack, apiBaseUrl }) {
   const [editingParticipante, setEditingParticipante] = useState(null);
   const [toast, setToast] = useState(null);
   const [filtroVisualizacao, setFiltroVisualizacao] = useState('todos'); // todos, visualizados, pendentes
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
 
   useEffect(() => {
-    loadData();
+    loadData(true);
   }, [grupo.id]);
 
-  // Auto-refresh dos dados a cada 5 segundos se houver sorteio
+  // Auto-refresh dos dados a cada 10 segundos se houver sorteio
   useEffect(() => {
     if (sorteio && grupo.status === 'sorteado') {
       const interval = setInterval(() => {
-        loadData();
-      }, 5000); // Atualiza a cada 5 segundos
+        loadData(false); // false = não mostrar loading
+      }, 10000); // Atualiza a cada 10 segundos
 
       return () => clearInterval(interval);
     }
   }, [sorteio, grupo.status]);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (showLoading = true) => {
+    if (showLoading && isFirstLoad) {
+      setLoading(true);
+    }
     try {
       const [participantesRes, sorteioRes, enviosRes] = await Promise.all([
         fetch(`${apiBaseUrl}/grupos/${grupo.id}/participantes`),
@@ -52,6 +55,7 @@ function GrupoDetail({ grupo, onBack, apiBaseUrl }) {
       console.error('Erro ao carregar dados:', error);
     } finally {
       setLoading(false);
+      setIsFirstLoad(false);
     }
   };
 
