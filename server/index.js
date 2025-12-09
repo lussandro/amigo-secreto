@@ -26,6 +26,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Reveal route (pública, antes do /api)
+const revealController = require('./controllers/revealController');
+app.get('/reveal/:token', revealController.revelarAmigo);
+
 // API Routes
 app.use('/api', routes);
 
@@ -36,7 +40,7 @@ if (process.env.NODE_ENV === 'production') {
   
   // Todas as rotas que não começam com /api devem servir o index.html do React
   app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api')) {
+    if (req.path.startsWith('/api') || req.path.startsWith('/reveal')) {
       return next();
     }
     res.sendFile(path.join(buildPath, 'index.html'));
