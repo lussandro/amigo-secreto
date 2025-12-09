@@ -26,11 +26,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Reveal route (pública, antes do /api)
-const revealController = require('./controllers/revealController');
-app.get('/reveal/:token', revealController.revelarAmigo);
-
-// API Routes
+// API Routes (inclui /api/reveal/:token)
 app.use('/api', routes);
 
 // Servir frontend em produção
@@ -39,8 +35,9 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(buildPath));
   
   // Todas as rotas que não começam com /api devem servir o index.html do React
+  // Isso permite que o React Router funcione corretamente
   app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api') || req.path.startsWith('/reveal')) {
+    if (req.path.startsWith('/api')) {
       return next();
     }
     res.sendFile(path.join(buildPath, 'index.html'));
