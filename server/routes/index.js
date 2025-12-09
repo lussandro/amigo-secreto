@@ -45,6 +45,7 @@ router.get('/admin/verificar-links', adminController.verificarLinks);
 router.post('/admin/corrigir-links', adminController.corrigirLinks);
 router.post('/admin/grupos/:grupo_id/limpar-duplicados', adminController.limparSorteiosDuplicados);
 router.post('/admin/grupos/:grupo_id/resetar', adminController.resetarGrupo);
+router.post('/admin/resetar-visualizacao/:token', adminController.resetarVisualizacao);
 
 module.exports = router;
 

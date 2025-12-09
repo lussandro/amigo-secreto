@@ -181,9 +181,39 @@ async function resetarGrupo(req, res) {
   }
 }
 
+async function resetarVisualizacao(req, res) {
+  try {
+    const { token } = req.params;
+
+    const sorteio = await db.get(
+      'SELECT id, visualizacoes FROM sorteios WHERE token_revelacao = ?',
+      [token]
+    );
+
+    if (!sorteio) {
+      return res.status(404).json({ error: 'Token não encontrado' });
+    }
+
+    await db.run(
+      'UPDATE sorteios SET visualizacoes = 0, visualizado_em = NULL WHERE token_revelacao = ?',
+      [token]
+    );
+
+    res.json({
+      message: 'Visualização resetada com sucesso',
+      token: token,
+      visualizacoes_antes: sorteio.visualizacoes
+    });
+  } catch (error) {
+    console.error('Erro ao resetar visualização:', error);
+    res.status(500).json({ error: error.message || 'Erro ao resetar visualização' });
+  }
+}
+
 module.exports = {
   corrigirLinks,
   verificarLinks,
   limparSorteiosDuplicados,
-  resetarGrupo
+  resetarGrupo,
+  resetarVisualizacao
 };
