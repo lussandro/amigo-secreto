@@ -8,14 +8,28 @@ require('dotenv').config();
 // Função para obter APP_BASE_URL em runtime (recarrega do process.env)
 function getAppBaseUrl() {
   let url = process.env.APP_BASE_URL;
+  
+  // Se não estiver configurado, tentar usar variáveis do Coolify
   if (!url) {
-    url = process.env.NODE_ENV === 'production' 
-      ? 'http://localhost:5000'
-      : 'http://localhost:3000';
-  } else if (process.env.NODE_ENV !== 'production' && url.includes('localhost:5000')) {
-    // Se estiver em desenvolvimento e o APP_BASE_URL apontar para porta 5000, mudar para 3000
+    // Coolify injeta COOLIFY_FQDN ou podemos usar COOLIFY_URL
+    url = process.env.COOLIFY_FQDN || process.env.COOLIFY_URL;
+    
+    // Se ainda não tiver, usar fallback baseado no ambiente
+    if (!url) {
+      url = process.env.NODE_ENV === 'production' 
+        ? 'http://localhost:5000'
+        : 'http://localhost:3000';
+    }
+  }
+  
+  // Garantir que a URL não tenha barra no final
+  url = url.replace(/\/$/, '');
+  
+  // Se estiver em desenvolvimento e o APP_BASE_URL apontar para porta 5000, mudar para 3000
+  if (process.env.NODE_ENV !== 'production' && url.includes('localhost:5000')) {
     url = url.replace(':5000', ':3000');
   }
+  
   return url;
 }
 

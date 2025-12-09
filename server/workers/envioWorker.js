@@ -130,7 +130,22 @@ Boa sorte e divirta-se! 🎄✨`,
 envioQueue.process('enviar-teste-lote', async (job) => {
   const { grupo_id, participantes, app_base_url } = job.data;
   // Usar app_base_url do job ou recarregar do process.env
-  const APP_BASE_URL = app_base_url || process.env.APP_BASE_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'http://localhost:5000');
+  let APP_BASE_URL = app_base_url || process.env.APP_BASE_URL;
+  
+  // Se não estiver configurado, tentar usar variáveis do Coolify
+  if (!APP_BASE_URL) {
+    APP_BASE_URL = process.env.COOLIFY_FQDN || process.env.COOLIFY_URL;
+    
+    // Se ainda não tiver, usar fallback baseado no ambiente
+    if (!APP_BASE_URL) {
+      APP_BASE_URL = process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:3000'
+        : 'http://localhost:5000';
+    }
+  }
+  
+  // Garantir que a URL não tenha barra no final
+  APP_BASE_URL = APP_BASE_URL.replace(/\/$/, '');
   
   console.log(`[WORKER] Processando lote de teste com ${participantes.length} participantes`);
   

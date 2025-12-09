@@ -5,7 +5,24 @@ require('dotenv').config();
 
 // Função para obter APP_BASE_URL em runtime (recarrega do process.env)
 function getAppBaseUrl() {
-  return process.env.APP_BASE_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'http://localhost:5000');
+  let url = process.env.APP_BASE_URL;
+  
+  // Se não estiver configurado, tentar usar variáveis do Coolify
+  if (!url) {
+    url = process.env.COOLIFY_FQDN || process.env.COOLIFY_URL;
+    
+    // Se ainda não tiver, usar fallback baseado no ambiente
+    if (!url) {
+      url = process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:3000'
+        : 'http://localhost:5000';
+    }
+  }
+  
+  // Garantir que a URL não tenha barra no final
+  url = url.replace(/\/$/, '');
+  
+  return url;
 }
 
 async function enviarLinks(req, res) {
