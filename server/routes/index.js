@@ -39,5 +39,10 @@ router.get('/reveal/:token', revealController.revelarAmigo);
 const testController = require('../controllers/testController');
 router.post('/teste-api', testController.testarAPI);
 
+// Admin
+const adminController = require('../controllers/adminController');
+router.get('/admin/verificar-links', adminController.verificarLinks);
+router.post('/admin/corrigir-links', adminController.corrigirLinks);
+
 module.exports = router;
 
